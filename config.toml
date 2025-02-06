@@ -1,0 +1,66 @@
+# Config for MOM-AGG + SMA system
+
+[settings]
+accountURL = "0bEiJzLfZBvIQ1WTELD0ow"
+accountID = "1133432"                 # Account number except clearing
+AGG = 5
+lookbackPeriod = "ONE_MONTH"          # ONE_WEEK, ONE_MONTH, THREE_MONTHS, SIX_MONTHS, ONE_YEAR
+SMAFilterLength = 200                 # DAYS, 0 if no filter
+backupAsset = "CASH"                  # If an asset doesn't pass SMA filter, allocate the money in this. "" => Cash
+backupType = "CASH"                   # "CASH" or "ASSET"
+holdPeriod = 1
+holdPeriodType = "WEEKS"
+
+[[assets]]
+asset = "DAX"
+assetID = "18981"
+assetType = "WARRANT"
+targetLev = 3
+
+[[assets]]
+asset = "DJI"
+assetID = "18985"
+assetType = "WARRANT"
+targetLev = 3
+
+[[assets]]
+asset = "NDX"
+assetID = "155541"
+assetType = "WARRANT"
+targetLev = 3
+
+[[assets]]
+asset = "OMX"
+assetID = "19002"
+assetType = "WARRANT"
+targetLev = 3
+
+[[assets]]
+asset = "DJUS"
+assetid = "155458"
+assetType = "WARRANT"
+targetLev = 2
+
+[[assets]]
+asset = "Guld"
+assetID = "18986"
+assetType = "WARRANT"
+targetLev = 2
+
+[[assets]]
+asset = "Koppar"
+assetID = "18989"
+assetType = "WARRANT"
+targetLev = 2
+
+[[assets]]
+asset = "EUR/USD"
+assetID = "18987"
+assetType = "WARRANT"
+targetLev = 2
+
+[[assets]]
+asset = "USD/SEK"
+assetID = "19000"
+assetType = "WARRANT"
+targetLev = 2
