@@ -23,7 +23,8 @@ const (
 	PLACE_ORDER_URL       = "/_api/trading-critical/rest/order/new"                 //POST
 	MATCHING_PRICE_URL    = "/_api/trading/rest/matchingprice/"                     //POST
 	CHECK_ORDER_URL       = "/_api/trading-critical/rest/order/find"                //GET
-	MODIFY_ORDER_URL      = "/_api/trading-critical/rest/order/modify/"             //POST
+	MODIFY_ORDER_URL      = "/_api/trading-critical/rest/order/modify"              //POST
 	REQ_ID_URL            = "/_api/trading/rest/order/requestid"                    //GET
 	VALIDATE_URL          = "/_api/trading-critical/rest/order/validation/validate" //POST
+	IRR_DATES_URL         = "/_api/trading/rest/trading-calendar/irregular-dates"   //GET
 )

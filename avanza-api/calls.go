@@ -1,6 +1,7 @@
 package avanza_api
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -109,7 +110,9 @@ func (c *ApiClient) GetMatchingPrice(assetID, side string, volume float64) (floa
 
 	resp, err := HTTPGet[api_models.MatchingPrice](url, c.CredHeaders)
 	if err != nil {
-		return 0.00, fmt.Errorf("failed to get matching price for asset %s: %w", assetID, err)
+		return 0.0, fmt.Errorf("failed to get matching price for asset %s: %w", assetID, err)
+	} else if resp.Price == 0 {
+		return 0.0, errors.New("Mathcing price not available, market maker not present")
 	}
 
 	return resp.Price, nil
@@ -122,7 +125,7 @@ func (c *ApiClient) CheckOrder(accID, orderID string) (api_models.OrderStatus, e
 	if err != nil {
 		return *resp, fmt.Errorf("error getting order status for order %s: %w", orderID, err)
 	}
-
+	fmt.Println(resp)
 	return *resp, nil
 }
 
@@ -130,15 +133,18 @@ func (c *ApiClient) ModifyOrder(accID, orderID string, price float64, volume int
 	url := api_models.BASE_URL + api_models.MODIFY_ORDER_URL
 
 	payload := api_models.ModifyOrderInfo{
-		AccountID: accID,
-		OrderID:   orderID,
+		AccountId: accID,
+		OrderId:   orderID,
 		Price:     price,
 		Volume:    volume,
+		Metadata: api_models.Metadata{
+			OrderEntryMode: "STANDARD",
+		},
 	}
 
 	resp, err := HTTPPost[api_models.OrderResponse, api_models.ModifyOrderInfo](url, payload, nil)
 	if err != nil {
-		return *resp, fmt.Errorf("failed to modify order %s: %w", orderID, err)
+		return api_models.OrderResponse{}, fmt.Errorf("failed to modify order %s: %w", orderID, err)
 	}
 
 	return *resp, nil
@@ -161,6 +167,17 @@ func (c *ApiClient) ValidateOrder(requestInfo api_models.ValidationRequest) (api
 	resp, err := HTTPPost[api_models.ValidationResponse, api_models.ValidationRequest](url, requestInfo, c.CredHeaders)
 	if err != nil {
 		return *resp, fmt.Errorf("failed to vaildate order: %w", err)
+	}
+
+	return *resp, nil
+}
+
+func GetIrregularDates() ([]api_models.IrregularDate, error) {
+	url := api_models.BASE_URL + api_models.IRR_DATES_URL
+
+	resp, err := HTTPGet[[]api_models.IrregularDate](url, nil)
+	if err != nil {
+		return *resp, fmt.Errorf("failed to get irregular dates: %w", err)
 	}
 
 	return *resp, nil

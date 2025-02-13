@@ -264,7 +264,7 @@ type WarrantInfo struct {
 		StartDate   string  `json:"startDate"`
 	} `json:"historicalClosingPrices"`
 	KeyIndicators struct {
-		Parity         int     `json:"parity"`
+		Parity         float64 `json:"parity"`
 		BarrierLevel   float64 `json:"barrierLevel"`
 		FinancingLevel float64 `json:"financingLevel"`
 		Direction      string  `json:"direction"`
@@ -303,8 +303,8 @@ type WarrantInfo struct {
 			ChangePercent     float64 `json:"changePercent"`
 			Spread            float64 `json:"spread"`
 			TimeOfLast        int64   `json:"timeOfLast"`
-			TotalValueTraded  int     `json:"totalValueTraded"`
-			TotalVolumeTraded int     `json:"totalVolumeTraded"`
+			TotalValueTraded  float64 `json:"totalValueTraded"`
+			TotalVolumeTraded float64 `json:"totalVolumeTraded"`
 			Updated           int64   `json:"updated"`
 			IsRealTime        bool    `json:"isRealTime"`
 		} `json:"quote"`
@@ -454,4 +454,11 @@ type ValidationResponse struct {
 	PriceRampingWarning struct {
 		Valid bool `json:"valid"`
 	} `json:"priceRampingWarning"`
+}
+
+// GetIrregularDates()
+type IrregularDate struct {
+	CountryCode  string `json:"countryCode"`
+	Date         string `json:"date"`
+	MarketStatus string `json:"marketStatus"`
 }

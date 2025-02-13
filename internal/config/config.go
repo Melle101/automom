@@ -87,7 +87,7 @@ func InitLogger() {
 	// Open log file
 	logFile, err := os.OpenFile("momBot.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal("❌ Failed to open log file:", err)
+		log.Fatal("Failed to open log file:", err)
 	}
 
 	// Log to both file and console

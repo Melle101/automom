@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"sort"
+	"time"
 
 	avanza_api "github.com/Melle101/mom-bot-v3/avanza-api"
 	api_models "github.com/Melle101/mom-bot-v3/avanza-api/api-models"
@@ -244,7 +247,7 @@ func findSuitableAsset(underlying string, targetLev int) (string, error) {
 	})
 
 	for _, warrant := range warrantList.Warrants {
-		if warrant.TotalValueTraded > 0 && warrant.Leverage < float64(targetLev)+1 {
+		if warrant.TotalValueTraded > 0 && warrant.Leverage < float64(targetLev)+1 && warrant.BuyPrice <= 3000 {
 			return warrant.OrderbookID, nil
 		}
 	}
@@ -265,9 +268,11 @@ func executeTrades(client *avanza_api.ApiClient, trades models.TradesInfo) error
 			log.Printf("Executing sell of assetID: %s (underlyingID: %s)", trade.AssetID, trade.UnderlyingID)
 			_, err := trading.WarrantMarketOrder(client, trade)
 			if err != nil {
-				return fmt.Errorf("failed to execute sell of asset %s. Error: %w", trade.AssetID, err)
+				return fmt.Errorf("Failed to execute sell of asset %s. Error: %w", trade.AssetID, err)
 			}
 		}
+		log.Println("Pausing for a minute to avoid rate limit")
+		time.Sleep(60 * time.Second)
 	}
 
 	if len(trades.Buys) == 0 {
@@ -276,7 +281,7 @@ func executeTrades(client *avanza_api.ApiClient, trades models.TradesInfo) error
 
 	positionInfo, err := client.GetPositions()
 	if err != nil {
-		return fmt.Errorf("error getting cash position: %w", err)
+		return fmt.Errorf("Error getting cash position: %w", err)
 	}
 
 	var availableCash float64
@@ -285,26 +290,111 @@ func executeTrades(client *avanza_api.ApiClient, trades models.TradesInfo) error
 			availableCash = cashPos.TotalBalance.Value
 		}
 	}
+
+	log.Printf("Calculating cash per buy. Available cash: %f", availableCash)
 	cashPerBuy := availableCash / float64(len(trades.Buys)+trades.BackupPositions)
+	log.Printf("Calculated cash per buy; %f", cashPerBuy)
 
 	for _, trade := range trades.Buys {
 
 		matchingPrice, err := client.GetMatchingPrice(trade.AssetID, trade.OrderType, 1)
 		if err != nil {
-			return fmt.Errorf("erro getting matching price for buy of asset: %s", trade.AssetID)
+			return fmt.Errorf("Error getting matching price for buy of asset: %s", trade.AssetID)
 		}
 
 		trade.Quantity = math.Floor(cashPerBuy / matchingPrice)
+		if trade.Quantity == 0 {
+			return fmt.Errorf("Not enough cash to buy atleast one share of %s", trade.AssetID)
+		}
 
 		if trade.AssetType == "WARRANT" {
 
 			log.Printf("Executing buy of assetID: %s (underlyingID: %s)", trade.AssetID, trade.UnderlyingID)
 			_, err := trading.WarrantMarketOrder(client, trade)
 			if err != nil {
-				return fmt.Errorf("failed to execute buy of asset %s. Error: %w", trade.AssetID, err)
+				return fmt.Errorf("Failed to execute buy of asset %s. Error: %w", trade.AssetID, err)
 			}
 		}
+
+		log.Println("Pausing for a minute to avoid rate limit")
+		time.Sleep(60 * time.Second)
 	}
 	log.Println("Trades executed sucessfully")
 	return nil
+}
+
+func logPeriod(past models.AccountPositions, upcoming []models.Asset) {
+	logFile, err := os.OpenFile("trades.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal("Failed to open log file:", err)
+	}
+	defer logFile.Close()
+
+	fmt.Fprintf(logFile, "\n\n########### %v ##########", time.Now().Format("2006-01-02"))
+	fmt.Fprintln(logFile, "\nPast period's holdings:")
+	fmt.Fprintf(logFile, "\n%-30s\t%-20s\t%-10s\t%5s\n", "Asset Name", "ID", "Type", "Change [%]")
+
+	for _, holding := range past.Positions {
+		change := ((holding.CurrentValue / holding.AcquisitionValue) - 1) * 100
+		fmt.Fprintf(logFile, "%-30s\t%-20s\t%-10s\t%5.2f\n", holding.AssetName, holding.ID, holding.AssetType, change)
+	}
+
+	fmt.Fprintln(logFile, "\nUpcoming holdings:")
+	fmt.Fprintf(logFile, "\n%-20s\t%-20s\n", "Underlying", "Type")
+
+	for _, next := range upcoming {
+		fmt.Fprintf(logFile, "%-20s\t%-20s\n", next.UnderlyingName, next.AssetType)
+	}
+}
+
+func getNextTradeDay() (*time.Time, error) {
+	today := time.Now()
+	weekday := today.Weekday() // Get today's weekday
+
+	// Calculate days until next Monday
+	daysUntilMonday := (8 - int(weekday)) % 7
+	if daysUntilMonday == 0 {
+		daysUntilMonday = 7 // If today is Monday, get next week's Monday
+	}
+
+	nextMonday := today.AddDate(0, 0, daysUntilMonday)
+	nextMonday = time.Date(nextMonday.Year(), nextMonday.Month(), nextMonday.Day(), 11, 0, 0, 0, nextMonday.Location())
+	for true {
+		tradeDayFound, err := isTradeDay(nextMonday.Format("2006-01-02"), "SE")
+		if err != nil {
+			return nil, err
+		}
+
+		if tradeDayFound {
+			return &nextMonday, nil
+		} else {
+			nextMonday.Add(time.Hour * 24)
+		}
+	}
+
+	return nil, errors.New("failed to find trade day")
+}
+
+func isTradeDay(dateString, market string) (bool, error) {
+	date, err := time.Parse("2006-01-02", dateString)
+	if err != nil {
+		return false, fmt.Errorf("error parsing date: %w", err)
+	}
+
+	if date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {
+		return false, nil
+	}
+
+	irrDates, err := avanza_api.GetIrregularDates()
+	if err != nil {
+		return false, err
+	}
+
+	for _, date := range irrDates {
+		if date.Date == dateString && date.CountryCode == market {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

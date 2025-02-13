@@ -69,30 +69,10 @@ func GetLastPrice(assetID string) (float64, error) {
 
 func WarrantMarketOrder(ApiClient *avanza_api.ApiClient, orderInfo models.OrderInfo) (api_models.OrderStatus, error) {
 
-	fmt.Println(ApiClient.CredHeaders)
-	warrantInfo, err := avanza_api.GetWarrantInfo(orderInfo.AssetID)
-	if err != nil {
-		return api_models.OrderStatus{}, fmt.Errorf("failed to get warrant info: %w", err)
-	}
-
 	matchingPrice, err := ApiClient.GetMatchingPrice(orderInfo.AssetID, orderInfo.OrderType, orderInfo.Quantity)
 	if err != nil {
 		return api_models.OrderStatus{}, fmt.Errorf("failed to get matching price: %w", err)
 	}
-
-	valInfo := api_models.ValidationRequest{
-		AccountID:              orderInfo.AccountID,
-		Condition:              "NORMAL",
-		Currency:               warrantInfo.Listing.Currency,
-		IsDividendReinvestment: false,
-		Isin:                   warrantInfo.Isin,
-		MarketPlace:            warrantInfo.Listing.MarketPlaceCode,
-		OrderbookID:            orderInfo.AssetID,
-		Price:                  matchingPrice,
-		Side:                   orderInfo.OrderType,
-		Volume:                 int(orderInfo.Quantity),
-	}
-	fmt.Println(valInfo)
 
 	reqID, err := ApiClient.GetRequestID()
 	if err != nil {
@@ -116,7 +96,6 @@ func WarrantMarketOrder(ApiClient *avanza_api.ApiClient, orderInfo models.OrderI
 
 	orderResponse, err := ApiClient.PlaceOrder(newOrderInfo)
 
-	fmt.Println(orderResponse)
 	if err != nil {
 		return api_models.OrderStatus{}, fmt.Errorf("failed to place order: %w", err)
 	} else if orderResponse.OrderRequestStatus != "SUCCESS" {
@@ -137,6 +116,9 @@ func WarrantMarketOrder(ApiClient *avanza_api.ApiClient, orderInfo models.OrderI
 
 		// if not filled, modify order
 		matchingPrice, err := ApiClient.GetMatchingPrice(orderInfo.AssetID, orderInfo.OrderType, orderInfo.Quantity)
+		if err != nil {
+			return api_models.OrderStatus{}, fmt.Errorf("failed to get matching price: %w", err)
+		}
 
 		resp, err := ApiClient.ModifyOrder(orderInfo.AccountID, orderResponse.OrderID, matchingPrice, orderStatus.Volume)
 		if err != nil || resp.OrderRequestStatus != "SUCCESS" {
@@ -145,5 +127,3 @@ func WarrantMarketOrder(ApiClient *avanza_api.ApiClient, orderInfo models.OrderI
 	}
 	return api_models.OrderStatus{}, fmt.Errorf("couldn't execute market order for order %s", orderInfo.AssetID)
 }
-
-func checkOrder() {}

@@ -36,21 +36,19 @@ type NewOrder struct {
 }
 
 type Metadata struct {
-	HasTouchedPrice string
+	HasTouchedPrice string `json:",omitempty"`
 	OrderEntryMode  string
 }
 
 // Modify order
 type ModifyOrderInfo struct {
-	OrderID    string  `json:"orderId,omitempty"`
-	Price      float64 `json:"price,omitempty"`
-	Volume     int     `json:"volume,omitempty"`
-	OpenVolume any     `json:"openVolume,omitempty"`
-	AccountID  string  `json:"accountId,omitempty"`
-	ValidUntil string  `json:"validUntil,omitempty"`
-	Metadata   struct {
-		OrderEntryMode string `json:"orderEntryMode,omitempty"`
-	} `json:"metadata,omitempty"`
+	OrderId    string
+	Price      float64
+	Volume     int
+	OpenVolume *int
+	AccountId  string
+	ValidUntil *string
+	Metadata   Metadata
 }
 
 type ValidationRequest struct {
